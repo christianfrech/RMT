@@ -242,7 +242,7 @@ class Adj_Mats(object):
     
     def make_eigenvalues(self, hamiltonian_iter=1000):
         #self.elec_adjacency_graphs=[]
-        self.elec_adjacency_graphs=cp.array(self.get_elec_adj())
+        self.elec_adjacency_graphs=cp.asarray(self.get_elec_adj())
         elec_count = len(self.elec_adjacency_graphs[0])
         self.eigenvalues = cp.zeros((len(self.elec_adjacency_graphs), hamiltonian_iter, elec_count))
         cp.cuda.Stream.null.synchronize()
