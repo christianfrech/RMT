@@ -162,9 +162,11 @@ class Adj_Mats(object):
                 val_frames.append(val_atoms)
                 val_atoms = []
         pdb_file.close()
+        print(len(frames))
     
         base = np.zeros((len(framesindices), len(frames[0]), 3))
         for i in framesindices:
+            i=int(i)
             for j in range(len(frames[i])):
                 for k in range(len(frames[i][j])):
                     base[i][j][k] = frames[i][j][k]
@@ -396,7 +398,7 @@ types='all_frames'
 lowerlimit=1
 upperlimit_list=createUpperLimitList(lowerlimit,10,0.5)
 spacinghistograms=[]
-framesindices=cp.linspace(0,2500,100)
+framesindices=cp.linspace(0,2500,101)
 cp.cuda.Stream.null.synchronize()
 hydrogenbonds_allframes=[]
 hydrogenbonds_array=[]
