@@ -164,7 +164,7 @@ class Adj_Mats(object):
         pdb_file.close()
     
         base = np.zeros((len(framesindices), len(frames[0]), 3))
-        for i in range(len(framesindices)):
+        for i in framesindices:
             for j in range(len(frames[i])):
                 for k in range(len(frames[i][j])):
                     base[i][j][k] = frames[i][j][k]
