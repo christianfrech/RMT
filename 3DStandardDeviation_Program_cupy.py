@@ -6,7 +6,13 @@ import matplotlib.pyplot as plt
 from numpy import linalg as LA
 import math
 import xlsxwriter
+import pandas as pd
+import scipy.stats as st
 from matplotlib import cm
+import matplotlib.colors as mcolors
+import imageio
+import image
+import cupy as cp
 
 # Fills transpose of mat[N][N] in tr[N][N] 
 def transpose(mat, tr, N): 
@@ -36,14 +42,6 @@ def makeSymmetric(inputmatrix):
                 inputmatrix[i][j]=1
     '''
     return inputmatrix
-
-#Creates the list of upper limits for bonding distances (functions identically to np.linspace)
-def createUpperLimitList(low,high,spacing):
-    limitlist=[]
-    for i in range(int((high-low)/spacing)+1):
-        value=low+(spacing*i)
-        limitlist.append(value)
-    return limitlist
 
 class PDBAtom(object):
     """ Class to represent a single atom's position and state at a frame
@@ -111,20 +109,14 @@ class Adj_Mats(object):
         get_atom_dists: Used to parse the pdb file to create a distance_graphs object
         get_atom_adj: Used to set an adjacency threshold on the distance matrices and make adjacency matrices
     """
-    
-    
+
     def __init__(self, pdb):
         self.file = pdb
-        self.valence_list = cp.zeros(1, int)
-        cp.cuda.Stream.null.synchronize()
-        self.distance_graphs = cp.zeros(1, int)
-        cp.cuda.Stream.null.synchronize()
-        self.adjacency_graphs = cp.zeros(1, int)
-        cp.cuda.Stream.null.synchronize()
-        self.elec_adjacency_graphs = cp.zeros(1, int)
-        cp.cuda.Stream.null.synchronize()
-        self.elneg_adj = cp.zeros(1, int)
-        cp.cuda.Stream.null.synchronize()
+        self.valence_list = np.zeros(1, int)
+        self.distance_graphs = np.zeros(1, int)
+        self.adjacency_graphs = np.zeros(1, int)
+        self.elec_adjacency_graphs = np.zeros(1, int)
+        self.elneg_adj = np.zeros(1, int)
         self.eigenvalues = None
         self.bin_probs = None
         self.entropy = None
@@ -136,7 +128,7 @@ class Adj_Mats(object):
         
     def set_atom_adj(self, new_adj):
         self.adjacency_graphs = new_adj
-        
+    
     def get_atom_dists(self):
         if os.path.isfile(self.file):
             pdb_file = open(self.file,'r')
@@ -168,19 +160,18 @@ class Adj_Mats(object):
                 val_frames.append(val_atoms)
                 val_atoms = []
         pdb_file.close()
+        print(len(frames))
     
-        base = cp.zeros((len(framesindices), len(frames[0]), 3))
-        cp.cuda.Stream.null.synchronize()
+        base = np.zeros((len(framesindices), len(frames[0]), 3))
         for i in range(len(framesindices)):
+            index = int(framesindices[i])
             for j in range(len(frames[i])):
                 for k in range(len(frames[i][j])):
-                    base[i][j][k] = frames[i][j][k]
-        dists = cp.reshape(base, (len(framesindices), 1, len(frames[0]), 3)) - cp.reshape(base, (len(framesindices), len(frames[0]), 1, 3)) 
-        cp.cuda.Stream.null.synchronize() 
+                    base[i][j][k] = frames[index][j][k]
+        dists = np.reshape(base, (len(framesindices), 1, len(frames[0]), 3)) - np.reshape(base, (len(framesindices), len(frames[0]), 1, 3))  
         dists = dists**2
         dists = dists.sum(3)
-        dists = cp.sqrt(dists)
-        cp.cuda.Stream.null.synchronize()
+        dists = np.sqrt(dists)
         
         self.valence_list = val_frames
         self.distance_graphs = dists
@@ -190,47 +181,52 @@ class Adj_Mats(object):
     def get_atom_adj(self, s=1, t=4):
         if len(self.distance_graphs) == 1:
             self.get_atom_dists()
+        print('getting atom adj')
 
         used_valence_list = set()
+        hydrogenbond_count=0
 
         self.adjacency_graphs = ((self.distance_graphs < t) & (self.distance_graphs > s)).astype(int)
 
         #Eliminating same-atom intramolecular interactions:
-        for frame in range(len(self.adjacency_graphs)):  
-            hydrogenbond_count=0
+        for frame in range(len(self.adjacency_graphs)):
+            print(frame)
             for i in range(len(self.adjacency_graphs[frame])):
                 for j in range(len(self.adjacency_graphs[frame][i])):
                     if (i//3==j//3):
                         self.adjacency_graphs[frame][i][j]=1
                     elif ((self.valence_list[frame][i]!=self.valence_list[frame][j]) & (self.adjacency_graphs[frame][i][j]==1)):
-                        #self.adjacency_graphs[frame][i][j]=1
+                        self.adjacency_graphs[frame][i][j]=1
                         if (i,j) not in used_valence_list:
                             hydrogenbond_count+=1
                         else: 
                             pass
-                        used_valence_list.add((i,j))
-                        used_valence_list.add((j,i))
                     else:
                         self.adjacency_graphs[frame][i][j]=0
 
+                    used_valence_list.add((i,j))
+                    used_valence_list.add((j,i))
+
         hydrogenbonds_array.append(hydrogenbond_count)
+        print('done getting atom adj')
 
         return self.adjacency_graphs
     
     def get_elec_adj(self):
         #if len(self.adjacency_graphs) == 1:
         self.get_atom_adj(lowerlimit,upperlimit)
-            
+        print('getting elec adj')
+
         total_val = 0
         
         for i in range(len(self.valence_list[0])):
             total_val += self.valence_list[0][i]
         valencelistframes = len(self.valence_list)
-        self.elec_adjacency_graphs = cp.zeros((len(framesindices), total_val, total_val))
-        cp.cuda.Stream.null.synchronize()
+        self.elec_adjacency_graphs = np.zeros((len(framesindices), total_val, total_val))
         curr_n, curr_m = 0, 0
         
         for i in range(len(self.adjacency_graphs)):
+            print(i)
             for j in range(len(self.adjacency_graphs[0])):
                 for b in range(self.valence_list[i][j]):
                     for k in range(len(self.adjacency_graphs[0][0])):
@@ -240,11 +236,13 @@ class Adj_Mats(object):
                     curr_m = 0
                     curr_n += 1
             curr_n = 0  
+        
+        print('done getting elec adj')
         return self.elec_adjacency_graphs
     
     def make_eigenvalues(self, hamiltonian_iter=1000):
         #self.elec_adjacency_graphs=[]
-        self.elec_adjacency_graphs=self.get_elec_adj()
+        self.elec_adjacency_graphs=cp.array(self.get_elec_adj())
         elec_count = len(self.elec_adjacency_graphs[0])
         self.eigenvalues = cp.zeros((len(self.elec_adjacency_graphs), hamiltonian_iter, elec_count))
         cp.cuda.Stream.null.synchronize()
@@ -256,8 +254,8 @@ class Adj_Mats(object):
                 cp.cuda.Stream.null.synchronize()
                 rt = cp.transpose(r)
                 cp.cuda.Stream.null.synchronize()
-                h = (r + rt) / cp.sqrt(2 * elec_count)
-                cp.cuda.Stream.null.synchronize() 
+                h = (r + rt) / cp.sqrt(2 * elec_count)   
+                cp.cuda.Stream.null.synchronize()       
                 adj_r = self.elec_adjacency_graphs[frame] * h
                 eigs = cp.ndarray.tolist(cp.linalg.eigvals(adj_r))
                 cp.cuda.Stream.null.synchronize()
@@ -388,7 +386,7 @@ types: which type of eigenvalue spacings to use
 lowerlimit=1
 upperlimit_list=createUpperLimitList(lowerlimit,10,0.5)
 allframes_stdevs=[]
-framesindices=cp.linspace(1,2500,5)
+framesindices=cp.linspace(1,2500,101)
 cp.cuda.Stream.null.synchronize()
 types='all_frames'
 frames=[]
@@ -419,10 +417,10 @@ for upperlimit in upperlimit_list:
     workbook = xlsxwriter.Workbook('Frech_Christian_cupystdevdata.xlsx')
     worksheet = workbook.add_worksheet()
 
-    bold = workbook.add_format({'bold'=True})
+    #bold = workbook.add_format({'bold'=True})
     col = findIndex(upperlimit,upperlimit_list)
     
-    worksheet.write(0, col, upperlimit, bold)
+    worksheet.write(0, col, upperlimit)
     for row in range(len(stdevvalues)):
         worksheet.write((row+1), col, allhists[row])
 
