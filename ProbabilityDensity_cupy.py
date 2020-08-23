@@ -402,7 +402,7 @@ types='all_frames'
 lowerlimit=1
 upperlimit_list=createUpperLimitList(lowerlimit,10,0.5)
 spacinghistograms=[]
-framesindices=cp.linspace(0,2500,100)
+framesindices=cp.linspace(0,2500,101)
 cp.cuda.Stream.null.synchronize()
 hydrogenbonds_allframes=[]
 hydrogenbonds_array=[]
@@ -415,7 +415,7 @@ file = open(file_to_open)
 #for frameindex in framesindices:
 hydrogenbonds=[]
 allspacings=[]
-numberofbins=100
+numberofbins=101
 histogram=[]
 
 #naming protocol
