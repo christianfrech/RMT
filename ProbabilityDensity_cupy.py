@@ -257,8 +257,10 @@ class Adj_Mats(object):
                 h = (r + rt) / cp.sqrt(2 * elec_count)   
                 cp.cuda.Stream.null.synchronize()       
                 adj_r = self.elec_adjacency_graphs[frame] * h
-                print(adj_r)
-                eigs = cp.ndarray.tolist(cp.linalg.eigvals(adj_r))
+                print(cp.linalg.eigvals(adj_r))
+                eigens = cp.linalg.eigvals(adj_r)
+                cp.cuda.Stream.null.synchronize()
+                eigs = cp.ndarray.tolist(eigens[0])
                 cp.cuda.Stream.null.synchronize()
                 eigs.sort()
                 #for i in range(len(eigs)):
