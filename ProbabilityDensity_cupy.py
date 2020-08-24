@@ -242,12 +242,12 @@ class Adj_Mats(object):
     
     def make_eigenvalues(self, hamiltonian_iter=1000):
         #self.elec_adjacency_graphs=[]
-        self.elec_adjacency_graphs=cp.asarray(self.get_elec_adj())
+        self.elec_adjacency_graphs=cp.array(self.get_elec_adj())
         elec_count = len(self.elec_adjacency_graphs[0])
         self.eigenvalues = cp.zeros((len(self.elec_adjacency_graphs), hamiltonian_iter, elec_count))
         cp.cuda.Stream.null.synchronize()
         for frame in range(len(self.elec_adjacency_graphs)):
-            frame_eigs = []
+            #frame_eigs = cp.zeros((hamiltonian_iter, elec_count))
             for i in range(hamiltonian_iter):
                 print(i)
                 r = cp.random.normal(size=(elec_count, elec_count))
@@ -257,16 +257,13 @@ class Adj_Mats(object):
                 h = (r + rt) / cp.sqrt(2 * elec_count)   
                 cp.cuda.Stream.null.synchronize()       
                 adj_r = self.elec_adjacency_graphs[frame] * h
-                print(cp.linalg.eigvals(adj_r))
-                eigens = cp.linalg.eigvals(adj_r)
-                cp.cuda.Stream.null.synchronize()
-                eigs = cp.ndarray.tolist(eigens[0])
+                eigs = cp.ndarray.tolist(cp.linalg.eigvals(adj_r))
                 cp.cuda.Stream.null.synchronize()
                 eigs.sort()
-                #for i in range(len(eigs)):
-                frame_eigs.append(cp.real(eigs))
+                for value in range(len(eigs)):
+                    self.eigenvalues[frame][i][value] = eigs[value]
                 cp.cuda.Stream.null.synchronize()
-            self.eigenvalues[frame] = frame_eigs
+            #self.eigenvalues[frame] = frame_eigs
         return self.eigenvalues
 
     def get_spacings(self,types):
