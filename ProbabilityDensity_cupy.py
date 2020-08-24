@@ -110,7 +110,7 @@ class Adj_Mats(object):
         get_atom_adj: Used to set an adjacency threshold on the distance matrices and make adjacency matrices
     """
 
-            def __init__(self, pdb):
+    def __init__(self, pdb):
         self.file = pdb
         self.valence_list = np.zeros(1, int)
         self.distance_graphs = np.zeros(1, int)
@@ -257,7 +257,8 @@ class Adj_Mats(object):
                 h = (r + rt) / cp.sqrt(2 * elec_count)   
                 cp.cuda.Stream.null.synchronize()       
                 adj_r = self.elec_adjacency_graphs[frame] * h
-                eigs = cp.ndarray.tolist(cp.linalg.eigvals(adj_r))
+                vects_values = cp.linalg.eigh(adj_r)
+                eigs = cp.ndarray.tolist(vects_values[0])
                 cp.cuda.Stream.null.synchronize()
                 eigs.sort()
                 for value in range(len(eigs)):
