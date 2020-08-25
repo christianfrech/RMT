@@ -268,11 +268,11 @@ class Adj_Mats(object):
         return self.eigenvalues
 
     def get_spacings(self,types):
-        allframes_spacing=[]
+        allframes_spacing=cp.array(len(eigenvalues), len(eigenvalues[0]))
         eigenvalues = self.make_eigenvalues()
         #eigenvalues=[np.random.rand(1000,60)]
-        eigenvalues=cp.array(eigenvalues)
-        cp.cuda.Stream.null.synchronize()
+        eigenvalues=np.ndarray(eigenvalues)
+        #cp.cuda.Stream.null.synchronize()
         if types=='all':
             medians=[]
             nexttomedian=[]
@@ -288,21 +288,23 @@ class Adj_Mats(object):
             return [counts, allspacings]
         else:
             for frame in range(len(self.elec_adjacency_graphs)):
-                medians=[]
-                nexttomedian=[] 
-                spacings=[]
+                medians=cp.zeros((len(eigenvalues[frame]), len(eigenvalues[frame][0])))
+                nexttomedian=cp.zeros((len(eigenvalues[frame]), len(eigenvalues[frame][0])))
+                spacings=cp.zeros((len(eigenvalues[frame]), len(eigenvalues[frame][0])))
                 for i in range(len(eigenvalues[frame])):
                     #Calculating medians and converting eigenvalue array to 1xn list:
-                    medians.append(cp.median(eigenvalues[frame][i]))
-                    cp.cuda.Stream.null.synchronize()
+                    medians[frame][i] = np.median(eigenvalues[frame][i])
+
                     if len(eigenvalues[frame][i])%2==0:
-                        nexttomedian.append((eigenvalues[frame][i][math.floor(len(eigenvalues[frame])/2)+1]+eigenvalues[frame][i][math.floor(len(eigenvalues[frame])/2)+2])/2)
+                        nexttomedian[i] = (eigenvalues[frame][i][math.floor(len(eigenvalues[frame])/2)+1]+eigenvalues[frame][i][math.floor(len(eigenvalues[frame])/2)+2])/2
                     else:
-                        nexttomedian.append(eigenvalues[frame][i][math.floor(len(eigenvalues[frame])/2)+1])
+                        nexttomedian[i] = eigenvalues[frame][i][math.floor(len(eigenvalues[frame])/2)+1]
                 #Calculating median and median+1 spacings, along with spacing standard deviation:
                 for i in range(len(medians)):
-                    spacings.append(abs(nexttomedian[i]-medians[i]))
-                allframes_spacing.append(spacings)
+                    spacings = abs(nexttomedian[i]-medians[i])
+                #Entering spacings into array of all spacings
+                for space in range(len(spacings)):
+                allframes_spacing[frame][space] = spacings[space]
                 print(allframes_spacing)
             return allframes_spacing
 
