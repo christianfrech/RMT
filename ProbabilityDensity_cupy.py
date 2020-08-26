@@ -240,7 +240,7 @@ class Adj_Mats(object):
         print('done getting elec adj')
         return self.elec_adjacency_graphs
     
-    def make_eigenvalues(self, hamiltonian_iter=1000):
+    def make_eigenvalues(self, hamiltonian_iter=100):
         #self.elec_adjacency_graphs=[]
         self.elec_adjacency_graphs=cp.array(self.get_elec_adj())
         elec_count = len(self.elec_adjacency_graphs[0])
@@ -268,10 +268,10 @@ class Adj_Mats(object):
         return self.eigenvalues
 
     def get_spacings(self,types):
-        allframes_spacing=cp.array(len(eigenvalues), len(eigenvalues[0]))
         eigenvalues = self.make_eigenvalues()
+        allframes_spacing=cp.zeros(len(eigenvalues), len(eigenvalues[0]))
         #eigenvalues=[np.random.rand(1000,60)]
-        eigenvalues=np.ndarray(eigenvalues)
+        eigenvalues=cp.asnumpy(eigenvalues)
         #cp.cuda.Stream.null.synchronize()
         if types=='all':
             medians=[]
@@ -304,7 +304,7 @@ class Adj_Mats(object):
                     spacings = abs(nexttomedian[i]-medians[i])
                 #Entering spacings into array of all spacings
                 for space in range(len(spacings)):
-                allframes_spacing[frame][space] = spacings[space]
+                    allframes_spacing[frame][space] = spacings[space]
                 print(allframes_spacing)
             return allframes_spacing
 
@@ -417,6 +417,7 @@ hydrogenbonds=[]
 allspacings=[]
 numberofbins=101
 histogram=[]
+filenames=[]
 
 #naming protocol
 names_allframes=[]
@@ -444,14 +445,11 @@ for upperlimit in upperlimit_list:
             
         else:
             #Creating histogram data
-            spacinghistograms=spacinginfo
-            x = range(len(spacinginfo))
-            x_coord = cp.repeat(x, len(spacinginfo[0]))
-            cp.cuda.Stream.null.synchronize()
-            spacing_array = cp.array(spacinginfo)
-            cp.cuda.Stream.null.synchronize()
-            allhists = cp.ravel(spacing_array)
-            cp.cuda.Stream.null.synchronize()
+            spacinghistograms=cp.asnumpy(spacinginfo)
+            x = np.array(range(len(spacinginfo)))
+            x_coord = np.repeat(x, len(spacinginfo[0]))
+            spacing_array = np.array(spacinginfo)
+            allhists = np.ravel(spacing_array)
 
             #Saving data to excel spreadsheet for batching
             workbook = xlsxwriter.Workbook('Frech_Christian_cupyprobdensitydata.xlsx')
@@ -461,16 +459,17 @@ for upperlimit in upperlimit_list:
             col = findIndex(upperlimit,upperlimit_list)
             
             worksheet.write(0, col, upperlimit)
-            for row in range(len(stdevvalues)):
+            for row in range(len(allhists)):
                 worksheet.write((row+1), col, allhists[row])
 
             # Create a figure for plotting the data as a 3D histogram.
             fig, ax = plt.subplots(1,1)
-            weighting = cp.ones_like(allhists) / len(spacinginfo[0])
-            cp.cuda.Stream.null.synchronize()
+            weighting = np.ones_like(allhists) / len(spacinginfo[0])
             ax.hist2d(allhists, x_coord, bins=numberofbins, weights=weighting)
+            titleindex = findIndex(upperlimit, upperlimit_list)
             ax.set_xlabel('Spacing')
             ax.set_ylabel('Time Elapsed (10ns)')
+            ax.set_title(names_allframes[titleindex])
 
             filename='3DNetwork_{5}frame_probdensity3dplot_'+str(upperlimit)+'.png'
             filenames.append(filename)
@@ -572,7 +571,7 @@ else:
 
 #axes.legend(names,loc=2)
 print('end')
-axes.set_ylabel('Probability')
+axes.set_ylabel('Time Elapsed (10ns)')
 axes.set_xlabel('Spacing')
 #plt.savefig('3DWater_{1}frame_hydrogenbonds_spacingdistribution_sorted_1.55-2.2A.png', dpi=95)
 plt.show()
