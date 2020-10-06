@@ -177,8 +177,9 @@ class Adj_Mats(object):
                 val_atoms = []
         pdb_file.close()
         #FIX FRAMESINDICES (NOT VARIABLE), USE FRAMEINDEX
-        base = np.zeros((len(framesindices), len(frames[0]), 3))
-        for i in range(len(framesindices)):
+        base = np.zeros((len(frameindex), len(frames[0]), 3))
+        for i in frameindex:
+            i=int(i)
             for j in range(len(frames[i])):
                 for k in range(len(frames[i][j])):
                     base[i][j][k] = frames[i][j][k]
