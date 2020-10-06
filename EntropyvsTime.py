@@ -259,11 +259,11 @@ class Adj_Mats(object):
         mat1=self.get_elec_adj()
         #n=number of rows
         n=len(mat1[0])
-        #m=off-diagonal entries
-        m=0
         batch_entropies=[]
 
         for frame in range(len(mat1)):
+            #m=off-diagonal entries
+            m=0
             for i in range(len(mat1[frame])):
                 for j in range(len(mat1[frame])):
                     if i!=j:
