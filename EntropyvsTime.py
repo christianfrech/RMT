@@ -176,7 +176,7 @@ class Adj_Mats(object):
                 val_frames.append(val_atoms)
                 val_atoms = []
         pdb_file.close()
-    
+        #FIX FRAMESINDICES (NOT VARIABLE), USE FRAMEINDEX
         base = np.zeros((len(framesindices), len(frames[0]), 3))
         for i in range(len(framesindices)):
             for j in range(len(frames[i])):
@@ -279,23 +279,23 @@ class Adj_Mats(object):
 
 binscount=1000
 lowerlimit=1
-frame_list=[np.linspace(0,499,500),np.linspace(500,999,500),np.linspace(1000,1499,500),np.linspace(1500,1999,500),np.linspace(2000,499,500)]
+frame_list=[np.linspace(0,499,500),np.linspace(500,999,500),np.linspace(1000,1499,500),np.linspace(1500,1999,500),np.linspace(2000,2499,500)]
 hydrogenbonds_array=[]
-entropies=[]
 hydrogenbonds_oneframe=[]
-allframes_entropies=np.array(len(frame_list)*500)
+allframes_entropies=np.array(len(frame_list)*len(frame_list[0]))
 
 data_folder = "/home/gemsec-user/Desktop/"
 file_to_open = data_folder + "water.pdb"
 file = open(file_to_open)
 
 
-for frameindex in frame_list:
+for index in range(len(frame_list)):
     if __name__ == "__main__":
+        frameindices=frame_list[index]
         full = Adj_Mats(file_to_open)
         batch = full.entropyCalculation()
         for i in range(len(allframes_entropies)):
-            allframes_entropies[((frameindex*500) + i)] = batch[i]
+            allframes_entropies[((index*len(frame_list[0])) + i)] = batch[i]
     else: pass
 
 
